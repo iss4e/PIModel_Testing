@@ -1,5 +1,7 @@
 % test the model
 
+addpath('/u1/fkazhamiaka/Models/PIModel_Testing');
+
 model = IPmodel_noiteration;
 
 model.v_charging_filename='v_curve_charging_lifepo4.csv'; % CSV File containing constant-current charging voltage curves
