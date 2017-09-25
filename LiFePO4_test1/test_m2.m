@@ -1,11 +1,11 @@
 % test the model
 
-model = IPmodel;
+model = IPmodel_noiteration;
 
 model.v_charging_filename='v_curve_charging_lifepo4.csv'; % CSV File containing constant-current charging voltage curves
 model.v_discharging_filename='v_curve_discharging_lifepo4.csv'; % CSV File containing constant-current discharging voltage curves
 model.nominal_capacity=1.1; % Nominal capacity (Ampere-hours)
-model.R_i=0.045; % Internal impedance (Ohms)
+model.R_i=0.05; % Internal impedance (Ohms)
 model.max_charging_current=4.4; % Maximum charging current (Amperes)
 model.max_discharging_current=11; % Maximum discharging current (Amperes)
 model.initial_energy_content=3.4; % Initial energy content (Wh)
@@ -67,6 +67,13 @@ for i=1:numel(power)
                 % charge or discharge the battery (whichever is being attempted) without violating the rate constraint.
                 max_apply_power = causeException.message;
                 apply_power(i) = str2num(max_apply_power);
+            elseif (strcmp(exception.identifier, 'Battery:NoIntersection'))
+                
+                causeException = exception.cause{1};
+                % exception tells us approximately what the maximum power that can be used to
+                % discharge the battery without violating the energy content constraint.
+                max_apply_power = causeException.message;
+                apply_power(i) = str2num(max_apply_power);
             else 
                 rethrow(exception);
             end
@@ -96,3 +103,5 @@ plot(i_modelled)
 xlabel('Time')
 ylabel('Current')
 set(gca, 'FontSize', 15)
+
+save('v_PI_noiterate.mat', 'v_modelled');

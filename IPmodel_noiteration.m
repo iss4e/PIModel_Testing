@@ -1,4 +1,4 @@
-classdef IPmodel < matlab.System & matlab.system.mixin.Propagates
+classdef IPmodel_noiteration < matlab.System & matlab.system.mixin.Propagates
     % Integrated Power-based battery model: Matlab System block implementation. Note that voltage curves should be specified in three columns representing the following: C-rate, Ampere-hour content (Ah in Ah), Battery/Cell Voltage (in Volts). Rows corresponding to the same C-rate should appear in contiguous chronological order.
 
     % Public, tunable properties
@@ -227,7 +227,7 @@ classdef IPmodel < matlab.System & matlab.system.mixin.Propagates
 
             obj.eff_c = zeros(2, num_unique_charging_rates);
             obj.eff_d = zeros(2, num_unique_discharging_rates);
-
+    
             for i=1:num_unique_charging_rates
                 obj.eff_c(1,i) = 1 - ((obj.R_i*(unique_charging_rates(i)*obj.nominal_capacity))/obj.Vnom_c(1,i));
                 obj.eff_c(2,i) = unique_charging_rates(i)*obj.nominal_capacity;
@@ -252,8 +252,9 @@ classdef IPmodel < matlab.System & matlab.system.mixin.Propagates
             obj.a_2 = zeros(2, num_unique_charging_rates);
             obj.a_1 = zeros(2, num_unique_discharging_rates);
 
-            figure;
-            
+            %figure;
+            eff_cs = zeros(num_charging_points, 1);
+            eff_cs_avg = zeros(2, num_unique_charging_rates);
             for i=1:num_unique_charging_rates
 
                 start_index = unique_charging_rate_indices(i);
@@ -272,12 +273,17 @@ classdef IPmodel < matlab.System & matlab.system.mixin.Propagates
                 stretch_factor = 1 + (charging_voltages(start_index,2)/charging_voltages(end_index,2));
                 
                 for j=(start_index+1):end_index;
-                                      
+                    current = unique_charging_rates(i)*obj.nominal_capacity;
+                    effc = eff_charging(obj, current*charging_voltages(j,3), current);
+                    eff_cs(j) = effc;
+                    
                     ah_difference = (charging_voltages(j,2)-charging_voltages(j-1,2))*stretch_factor;
-                    E_c(j) = E_c(j-1) + charging_voltages(j,3)*ah_difference*obj.eff_c(1,i);
-
+                    E_c(j) = E_c(j-1) + charging_voltages(j,3)*ah_difference*effc;%obj.eff_c(1,i);
+                
                 end
                 
+                eff_cs_avg(1,i) = mean(eff_cs((start_index+1):end_index));
+                eff_cs_avg(2,i) = unique_charging_rates(i)*obj.nominal_capacity;
 %                 plot([0, E_c(start_index:end_index)'], [1.5, charging_voltages(start_index:end_index,3)'], 'LineWidth', 2);
 %                 if (i < num_unique_charging_rates)
 %                     hold on;
@@ -297,7 +303,9 @@ classdef IPmodel < matlab.System & matlab.system.mixin.Propagates
                 obj.a_2(2,i) = unique_charging_rates(i)*obj.nominal_capacity;
 
             end
-
+            
+            eff_ds = zeros(num_discharging_points, 1);
+            eff_ds_avg = zeros(2, num_unique_discharging_rates);
             for i=1:num_unique_discharging_rates
 
                 start_index = unique_discharging_rate_indices(i);
@@ -312,11 +320,16 @@ classdef IPmodel < matlab.System & matlab.system.mixin.Propagates
                 E_d(start_index) = 0;
 
                 for j=(start_index+1):end_index;
-
+                    current = -unique_discharging_rates(i)*obj.nominal_capacity;
+                    effd = eff_discharging(obj, current*discharging_voltages(j,3), current);
+                    eff_ds(j) = effd;
+                    
                     ah_difference = discharging_voltages(j,2)-discharging_voltages(j-1,2);
-                    E_d(j) = E_d(j-1) + discharging_voltages(j,3)*ah_difference/obj.eff_d(1,i);
+                    E_d(j) = E_d(j-1) + discharging_voltages(j,3)*ah_difference/effd;
 
                 end
+                eff_ds_avg(1,i) = mean(eff_ds((start_index+1):end_index));
+                eff_ds_avg(2,i) = -unique_discharging_rates(i)*obj.nominal_capacity;
 
             end
 
@@ -348,7 +361,30 @@ classdef IPmodel < matlab.System & matlab.system.mixin.Propagates
 
             end
             
+            figure;
+            scatter3(discharging_voltages(:,1)*obj.nominal_capacity, E_d, eff_ds);
+            set(gca, 'FontSize', 15)
+            xlabel('Current (A)')
+            ylabel('Energy Content (Wh)')
+            zlabel('Efficiency')
             
+            figure;
+            scatter(obj.eff_c(2,:), obj.eff_c(1,:), '*')
+            hold on;
+            scatter(eff_cs_avg(2,:), eff_cs_avg(1,:), '+')
+            set(gca, 'FontSize', 15)
+            xlabel('Current (A)')
+            ylabel('Efficiency')
+            legend('\eta_c with Vnom', '\eta_c averaged over SoC range')
+            
+            figure;
+            scatter(obj.eff_d(2,:), obj.eff_d(1,:), '*')
+            hold on;
+            scatter(eff_ds_avg(2,:), eff_ds_avg(1,:), '+')
+            set(gca, 'FontSize', 15)
+            xlabel('Current (A)')
+            ylabel('Efficiency')
+            legend('\eta_d with Vnom', '\eta_d averaged over SoC range')
             % Step 6: set maximum charging and discharging current
             
             obj.alpha_c = obj.max_charging_current;
@@ -360,7 +396,8 @@ classdef IPmodel < matlab.System & matlab.system.mixin.Propagates
             all_currents = vertcat(charging_voltages(:,1), -1*discharging_voltages(:,1))*obj.nominal_capacity;
             all_bks = vertcat(E_c, E_d);
             all_vs = vertcat(charging_voltages(:,3), discharging_voltages(:,3));
-
+            
+            
             M_data = scatteredInterpolant(all_currents, all_bks, all_vs, 'linear', 'linear');
             %obj.M_function = scatteredInterpolant(all_currents, all_bks, all_vs, 'linear', 'linear');
 
@@ -410,17 +447,18 @@ classdef IPmodel < matlab.System & matlab.system.mixin.Propagates
             
 
             % plot the M function;
-%             figure;
-%             scatter3(all_currents, all_bks, all_vs);
-%             xlabel('Current (A)')
-%             ylabel('Energy Content (Wh)')
-%             zlabel('Voltage (V)')
-%             
-%             hold on;
-%             scatter3(reshape(curr_grid, [1,numel(curr_grid)]), reshape(b_grid, [1,numel(b_grid)]), reshape(v_grid, [1,numel(v_grid)]));
+            figure;
+            scatter3(all_currents, all_bks, all_vs);
             
-%            hold on;
-%            scatter3(test_curs,test_bs,test_vs)
+            %hold on;
+            scatter3(reshape(curr_grid, [1,numel(curr_grid)]), reshape(b_grid, [1,numel(b_grid)]), reshape(v_grid, [1,numel(v_grid)]), '.', 'MarkerEdgeColor', [0.5 .5 .5], 'MarkerFaceColor', [0.5 0.5 0.5]);
+            zlim([1.5,2.8])
+            xlabel('Current (A)')
+            ylabel('Energy Content (Wh)')
+            zlabel('Voltage (V)')
+            
+%             hold on;
+%             scatter3(test_curs,test_bs,test_vs)
 
             % Step 8: specify remaining constants
             
@@ -447,8 +485,42 @@ classdef IPmodel < matlab.System & matlab.system.mixin.Propagates
             % Implement algorithm. Calculate y as a function of input u and
             % discrete states. u is the input power.
             
-            [curr_estimate, v_estimate, b_estimate, a_1_val, a_2_val, eff_c_val, eff_d_val] = iterateVoltage(obj,u);
- 
+            if (u == 0)
+                
+                obj.I = 0;
+                obj.V = obj.M_function(0,obj.b);
+                y = [obj.V, obj.I, obj.b];
+                return;
+                
+            end
+            
+            [curr_estimate, v_estimate, b_estimate, a_1_val, a_2_val, eff_c_val, eff_d_val, num_intersections] = getVoltage(obj,u);
+
+            if num_intersections == 0
+                power_resolution = u:(-u/50):0;
+                max_power = 0;
+                for p=power_resolution
+                    
+                    [curr_estimate, v_estimate, b_estimate, a_1_val, a_2_val, eff_c_val, eff_d_val, num_intersections] = getVoltage(obj,p);
+                    if (num_intersections > 0)
+                        max_power = p;
+                        break;
+                    end
+
+                end
+                msgID = 'Battery:NoIntersection';
+                msg = 'Charging or discharging power is too high';
+                baseException = MException(msgID,msg);
+                
+                msgID2 = 'Battery:MaxPower';
+                msg2 = num2str(max_power);
+                causeException = MException(msgID2, msg2);
+                baseException = addCause(baseException,causeException);
+                if (obj.throw_exception)
+                    throw(baseException);
+                end
+            end
+        
             % check that current does not exceed limits
             if (curr_estimate > obj.alpha_c) || (curr_estimate < obj.alpha_d)
                 
@@ -474,7 +546,7 @@ classdef IPmodel < matlab.System & matlab.system.mixin.Propagates
 
                         power_prime = power_range(p_index);
                         
-                        [curr_prime, v_prime, b_prime, a_1_prime, a_2_prime, eff_c_prime, eff_d_prime] = iterateVoltage(obj,power_prime);
+                        [curr_prime, v_prime, b_prime, a_1_prime, a_2_prime, eff_c_prime, eff_d_prime] = getVoltage(obj,power_prime);
 
                         if ((curr_prime < obj.alpha_c) && (abs(curr_prime) > abs(max_curr)))
                             max_pow = power_prime;
@@ -509,7 +581,7 @@ classdef IPmodel < matlab.System & matlab.system.mixin.Propagates
 
                         power_prime = power_range(p_index);
                         
-                        [curr_prime, v_prime, b_prime, a_1_prime, a_2_prime, eff_c_prime, eff_d_prime] = iterateVoltage(obj,power_prime);
+                        [curr_prime, v_prime, b_prime, a_1_prime, a_2_prime, eff_c_prime, eff_d_prime] = getVoltage(obj,power_prime);
 
                         if ((curr_prime > obj.alpha_d) && (abs(curr_prime) > abs(max_curr)))
                             max_pow = power_prime;
@@ -556,7 +628,7 @@ classdef IPmodel < matlab.System & matlab.system.mixin.Propagates
 
                     power_prime = power_range(p_index);
 
-                    [curr_prime, v_prime, b_prime, a_1_prime, a_2_prime, eff_c_prime, eff_d_prime] = iterateVoltage(obj,power_prime);
+                    [curr_prime, v_prime, b_prime, a_1_prime, a_2_prime, eff_c_prime, eff_d_prime] = getVoltage(obj,power_prime);
 
                     if ((b_prime < a_2_prime) && (abs(curr_prime) > abs(max_curr)))
                         max_pow = power_prime;
@@ -597,7 +669,7 @@ classdef IPmodel < matlab.System & matlab.system.mixin.Propagates
 
                     power_prime = power_range(p_index);
 
-                    [curr_prime, v_prime, b_prime, a_1_prime, a_2_prime, eff_c_prime, eff_d_prime] = iterateVoltage(obj,power_prime);
+                    [curr_prime, v_prime, b_prime, a_1_prime, a_2_prime, eff_c_prime, eff_d_prime] = getVoltage(obj,power_prime);
 
                     if ((b_prime > a_1_prime) && (abs(curr_prime) > abs(max_curr)))
                         max_pow = power_prime;
@@ -617,6 +689,7 @@ classdef IPmodel < matlab.System & matlab.system.mixin.Propagates
                     throw(baseException);
                 end
             end
+            
             
             obj.V = v_estimate;
             obj.I = curr_estimate;
@@ -670,7 +743,185 @@ classdef IPmodel < matlab.System & matlab.system.mixin.Propagates
             dt = 'double';
             cp = false;
         end
-       
+        
+        function effc = eff_charging(obj, power, current)
+            
+            effc = 1 - ((obj.R_i * (current^2))/power);
+            
+        end
+        
+        function effd = eff_discharging(obj, power, current)
+            
+            effd = 1 + ((obj.R_i * (current^2))/power);
+            
+        end
+        
+        
+        function [curr_best, v_best, b_best, a_1_best, a_2_best, eff_c_best, eff_d_best, num_intersections] = getVoltage(obj,u)
+        
+            test_volts = obj.V_min:((obj.V_max - obj.V_min)/1000):obj.V_max;
+            test_currents = u./test_volts;
+            
+            valid_v = [];
+            valid_c = [];
+            valid_e = [];
+            
+            eff_c_val = 1;
+            eff_d_val = 1;
+            
+            % discard all voltages outside the safe voltage range.
+            for i=1:numel(test_volts)
+                a2 = interp1(obj.a_2(2,:), obj.a_2(1,:), test_currents(i), 'linear', 'extrap');
+                a1 = interp1(obj.a_1(2,:), obj.a_1(1,:), test_currents(i), 'linear', 'extrap');
+                
+                delta_e = 0;
+               
+                if (test_currents(i) < 0) 
+                    %eff_d_val = interp1(obj.eff_d(2,:), obj.eff_d(1,:), test_currents(i), 'linear', 'extrap');
+                    eff_d_val = eff_discharging(obj, u, test_currents(i));
+                    delta_e = (u/eff_d_val)*obj.time_step;
+                elseif (test_currents(i) > 0)
+                    %eff_c_val = interp1(obj.eff_c(2,:), obj.eff_c(1,:), test_currents(i), 'linear', 'extrap');
+                    eff_c_val = eff_charging(obj, u, test_currents(i));
+                    delta_e = u*eff_c_val*obj.time_step;
+                end
+                    
+                b_i = obj.b_prev + delta_e;
+                
+                if (test_currents(i) >= obj.alpha_d && test_currents(i) <= obj.alpha_c && b_i > a1 && b_i < a2)
+                    valid_v = [valid_v, test_volts(i)];
+                    valid_c = [valid_c, test_currents(i)];
+                    valid_e = [valid_e, b_i];
+                end
+            end
+            
+            % now check if E and C combinations get us close to the
+            % corresponding V. If it is within the obj.tolerance, keep it
+            
+            % in this vector, we store the actual voltage (from M function), the corresponding
+            % C and E, as well as the voltage calculated as v=p/C;
+            valid_vvce = [];
+            
+            eff_c_val = 1;
+            eff_d_val = 1;
+            
+            actual_v = obj.M_function(valid_c, valid_e);
+            
+            for i = 1:numel(actual_v)
+                if (actual_v(i) < obj.V_min)
+                    actual_v(i) = obj.V_min;
+                elseif (actual_v(i) > obj.V_max)
+                    actual_v(i) = obj.V_max;
+                end
+            end
+                  
+            
+            
+            for i = 1:(numel(actual_v)-1)
+               
+                if (sign(u - actual_v(i)*valid_c(i)) ~= sign(u - actual_v(i+1)*valid_c(i+1))) 
+                    i_value = interp1([valid_c(i)*actual_v(i),valid_c(i+1)*actual_v(i+1)], [valid_c(i), valid_c(i+1)], u);
+                    delta_e = 0;
+                
+                    if (i_value < 0) 
+                        %eff_d_val = interp1(obj.eff_d(2,:), obj.eff_d(1,:), i_value, 'linear', 'extrap');
+                        eff_d_val = eff_discharging(obj, u, i_value);
+                        delta_e = (u/eff_d_val)*obj.time_step;
+                    elseif (i_value > 0)
+                        %eff_c_val = interp1(obj.eff_c(2,:), obj.eff_c(1,:), i_value, 'linear', 'extrap');
+                        eff_c_val = eff_charging(obj, u, i_value);
+                        delta_e = u*eff_c_val*obj.time_step;
+                    end
+
+                    b_value = obj.b_prev + delta_e;
+                    v_value = obj.M_function(i_value,b_value);
+                    
+                    valid_vvce = [valid_vvce; [v_value, u/i_value, i_value, b_value]];
+                    
+                end
+                
+            end
+            
+            num_intersections = size(valid_vvce,1);
+            % if we didnt find any good candidates for voltage...
+             if (size(valid_vvce,1) == 0)
+%                 %stop here
+%                 hold on;
+%                 plot3(valid_c, valid_e, valid_v, '-', 'LineWidth', 2);
+%                 hold on;
+%                 plot3(valid_c, valid_e, actual_v, '-', 'LineWidth', 2);
+%                 legend('M surface', 'points in X', 'points in Y')
+%                 figure;
+%                 hold on;
+%                 plot(valid_c, (valid_c.*actual_v), 'LineWidth', 2)
+%                 hold on;
+%                 plot(valid_c, ones(1,numel(valid_c))*u, '-.k', 'LineWidth', 2)
+%                 xlabel('Current (A)')
+%                 ylabel('Power (W)')
+%                 set(gca, 'FontSize', 15)
+                %xlim([min(valid_c), max(valid_c)]);
+%                 legend('Power = M(b,i) \cdot i');
+                numel(valid_vvce,1);
+                v_best = 0;
+                curr_best = 0;
+                b_best = 0;
+                a_2_best = 0;
+                a_1_best = 0;
+                eff_c_best = 0;
+                eff_d_best = 0;
+                return;
+            end
+            
+            % if more than one option, pick the best candidate based on
+            % closest voltage
+            if (size(valid_vvce,1) > 1)
+                min_distance = inf;
+                min_index = 0;
+                
+%                 figure;
+%                 hold on;
+%                 plot(valid_c, (valid_c.*actual_v), 'LineWidth', 2)
+%                 hold on;
+%                 plot(valid_c, ones(1,numel(valid_c))*u, '-.k', 'LineWidth', 2)
+%                 xlabel('Current (A)')
+%                 ylabel('Power (W)')
+%                 set(gca, 'FontSize', 15)
+%                 %xlim([min(valid_c), max(valid_c)]);
+%                 legend('Power = M(b,i) \cdot i');
+%                 size(valid_vvce,1)
+                
+                for i=1:size(valid_vvce,1)
+                    
+                    if (abs(valid_vvce(i,1) - obj.V) < min_distance)
+                        min_distance = abs(valid_vvce(i,1) - obj.V);
+                        min_index = i;
+                    end
+                    
+                end
+                
+                %check how many are more than 1 ampere from the minimum intersection
+%                 num_intersections = 0;
+%                 for i=1:size(valid_vvce,1)
+%                     
+%                     if (abs((u/valid_vvce(i,1)) - (u/valid_vvce(min_index,1))) > 1)
+%                         num_intersections = num_intersections + 1;
+%                     end
+%                     
+%                 end
+                
+                valid_vvce = valid_vvce(min_index,:);
+            end
+            
+            v_best = valid_vvce(1);
+            curr_best = valid_vvce(3);
+            b_best = valid_vvce(4);
+            a_2_best = interp1(obj.a_2(2,:), obj.a_2(1,:), curr_best, 'linear', 'extrap');
+            a_1_best = interp1(obj.a_1(2,:), obj.a_1(1,:), curr_best, 'linear', 'extrap');
+            eff_c_best = eff_c_val;
+            eff_d_best = eff_d_val;
+            
+        end
+            
         function [curr_best, v_best, b_best, a_1_best, a_2_best, eff_c_best, eff_d_best] = iterateVoltage(obj,u)
             
             max_iterations = 100;
