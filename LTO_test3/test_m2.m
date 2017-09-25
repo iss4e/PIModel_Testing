@@ -4,8 +4,8 @@ addpath('/u1/fkazhamiaka/Models/PIModel_Testing');
 
 model = IPmodel_noiteration;
 
-model.v_charging_filename='v_curve_charging_LTO_no001C.csv'; % CSV File containing constant-current charging voltage curves
-model.v_discharging_filename='v_curve_discharging_LTO_no001C.csv'; % CSV File containing constant-current discharging voltage curves
+model.v_charging_filename='v_curve_charging_LTO.csv'; % CSV File containing constant-current charging voltage curves
+model.v_discharging_filename='v_curve_discharging_LTO.csv'; % CSV File containing constant-current discharging voltage curves
 model.nominal_capacity=30; % Nominal capacity (Ampere-hours)
 model.R_i=0.002; % Internal impedance (Ohms)
 model.max_charging_current=150; % Maximum charging current (Amperes)
