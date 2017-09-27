@@ -488,7 +488,7 @@ classdef IPmodel_noiteration < matlab.System & matlab.system.mixin.Propagates
             if (u == 0)
                 
                 obj.I = 0;
-                obj.V = max(obj.Vmin, min(obj.Vmax, obj.M_function(0,obj.b)));
+                obj.V = max(obj.V_min, min(obj.V_max, obj.M_function(0,obj.b)));
                 y = [obj.V, obj.I, obj.b];
                 return;
                 
