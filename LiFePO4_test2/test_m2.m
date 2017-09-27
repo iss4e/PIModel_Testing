@@ -1,6 +1,6 @@
 % test the model
 
-addpath('/u1/fkazhamiaka/Models/PIModel_Testing');
+max(0addpath('/u1/fkazhamiaka/Models/PIModel_Testing');
 
 model = IPmodel_noiteration;
 
@@ -10,7 +10,7 @@ model.nominal_capacity=1.1; % Nominal capacity (Ampere-hours)
 model.R_i=0.05; % Internal impedance (Ohms)
 model.max_charging_current=4.4; % Maximum charging current (Amperes)
 model.max_discharging_current=11; % Maximum discharging current (Amperes)
-model.initial_energy_content=0; % Initial energy content (Wh)
+model.initial_energy_content=1; % Initial energy content (Wh)
 model.time_step = 1/360; % simulation time-step duration (hours)
 
 load('test_current_input.mat') % current

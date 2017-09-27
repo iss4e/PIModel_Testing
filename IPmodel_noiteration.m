@@ -450,9 +450,9 @@ classdef IPmodel_noiteration < matlab.System & matlab.system.mixin.Propagates
             figure;
             scatter3(all_currents, all_bks, all_vs);
             
-            %hold on;
+            hold on;
             scatter3(reshape(curr_grid, [1,numel(curr_grid)]), reshape(b_grid, [1,numel(b_grid)]), reshape(v_grid, [1,numel(v_grid)]), '.', 'MarkerEdgeColor', [0.5 .5 .5], 'MarkerFaceColor', [0.5 0.5 0.5]);
-            zlim([1.5,2.8])
+            zlim([1.5,4])
             xlabel('Current (A)')
             ylabel('Energy Content (Wh)')
             zlabel('Voltage (V)')
@@ -488,7 +488,7 @@ classdef IPmodel_noiteration < matlab.System & matlab.system.mixin.Propagates
             if (u == 0)
                 
                 obj.I = 0;
-                obj.V = obj.M_function(0,obj.b);
+                obj.V = max(obj.Vmin, min(obj.Vmax, obj.M_function(0,obj.b)));
                 y = [obj.V, obj.I, obj.b];
                 return;
                 
@@ -746,13 +746,17 @@ classdef IPmodel_noiteration < matlab.System & matlab.system.mixin.Propagates
         
         function effc = eff_charging(obj, power, current)
             
-            effc = 1 - ((obj.R_i * (current^2))/power);
+            %effc = 1 - ((obj.R_i * (current^2))/power);
+            vnom = interp1(obj.Vnom_c(2,:), obj.Vnom_c(1,:), current, 'linear', 'extrap');
+            effc = 1 - ((obj.R_i * (current))/vnom);
             
         end
         
         function effd = eff_discharging(obj, power, current)
             
-            effd = 1 + ((obj.R_i * (current^2))/power);
+            %effd = 1 + ((obj.R_i * (current^2))/power);
+            vnom = interp1(obj.Vnom_d(2,:), obj.Vnom_d(1,:), current, 'linear', 'extrap');
+            effd = 1 + ((obj.R_i * (current))/vnom);
             
         end
         
