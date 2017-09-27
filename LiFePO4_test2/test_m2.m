@@ -1,6 +1,6 @@
 % test the model
 
-max(0addpath('/u1/fkazhamiaka/Models/PIModel_Testing');
+addpath('/u1/fkazhamiaka/Models/PIModel_Testing');
 
 model = IPmodel_noiteration;
 
