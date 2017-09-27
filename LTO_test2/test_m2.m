@@ -10,7 +10,7 @@ model.nominal_capacity=30; % Nominal capacity (Ampere-hours)
 model.R_i=0.002; % Internal impedance (Ohms)
 model.max_charging_current=150; % Maximum charging current (Amperes)
 model.max_discharging_current=150; % Maximum discharging current (Amperes)
-model.initial_energy_content=0; % Initial energy content (Wh)
+model.initial_energy_content=10; % Initial energy content (Wh)
 model.time_step = 1/360; % simulation time-step duration (hours)
 
 load('test_current_input.mat') % current
