@@ -746,17 +746,17 @@ classdef IPmodel_noiteration < matlab.System & matlab.system.mixin.Propagates
         
         function effc = eff_charging(obj, power, current)
             
-            %effc = 1 - ((obj.R_i * (current^2))/power);
-            vnom = interp1(obj.Vnom_c(2,:), obj.Vnom_c(1,:), current, 'linear', 'extrap');
-            effc = 1 - ((obj.R_i * (current))/vnom);
+            effc = 1 - ((obj.R_i * (current^2))/power);
+            %vnom = interp1(obj.Vnom_c(2,:), obj.Vnom_c(1,:), current, 'linear', 'extrap');
+            %effc = 1 - ((obj.R_i * (current))/vnom);
             
         end
         
         function effd = eff_discharging(obj, power, current)
             
-            %effd = 1 + ((obj.R_i * (current^2))/power);
-            vnom = interp1(obj.Vnom_d(2,:), obj.Vnom_d(1,:), current, 'linear', 'extrap');
-            effd = 1 + ((obj.R_i * (current))/vnom);
+            effd = 1 + ((obj.R_i * (current^2))/power);
+            %vnom = interp1(obj.Vnom_d(2,:), obj.Vnom_d(1,:), current, 'linear', 'extrap');
+            %effd = 1 + ((obj.R_i * (current))/vnom);
             
         end
         
