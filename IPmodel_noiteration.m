@@ -325,7 +325,7 @@ classdef IPmodel_noiteration < matlab.System & matlab.system.mixin.Propagates
                     eff_ds(j) = effd;
                     
                     ah_difference = discharging_voltages(j,2)-discharging_voltages(j-1,2);
-                    E_d(j) = E_d(j-1) + discharging_voltages(j,3)*ah_difference/effd;
+                    E_d(j) = E_d(j-1) + discharging_voltages(j,3)*ah_difference*effd;
 
                 end
                 eff_ds_avg(1,i) = mean(eff_ds((start_index+1):end_index));
@@ -754,7 +754,7 @@ classdef IPmodel_noiteration < matlab.System & matlab.system.mixin.Propagates
         
         function effd = eff_discharging(obj, power, current)
             
-            effd = 1 + ((obj.R_i * (current^2))/power);
+            effd = 1 - ((obj.R_i * (current^2))/power);
             %vnom = interp1(obj.Vnom_d(2,:), obj.Vnom_d(1,:), current, 'linear', 'extrap');
             %effd = 1 + ((obj.R_i * (current))/vnom);
             
@@ -783,7 +783,7 @@ classdef IPmodel_noiteration < matlab.System & matlab.system.mixin.Propagates
                 if (test_currents(i) < 0) 
                     %eff_d_val = interp1(obj.eff_d(2,:), obj.eff_d(1,:), test_currents(i), 'linear', 'extrap');
                     eff_d_val = eff_discharging(obj, u, test_currents(i));
-                    delta_e = (u/eff_d_val)*obj.time_step;
+                    delta_e = (u*eff_d_val)*obj.time_step;
                 elseif (test_currents(i) > 0)
                     %eff_c_val = interp1(obj.eff_c(2,:), obj.eff_c(1,:), test_currents(i), 'linear', 'extrap');
                     eff_c_val = eff_charging(obj, u, test_currents(i));
@@ -821,8 +821,13 @@ classdef IPmodel_noiteration < matlab.System & matlab.system.mixin.Propagates
                   
             
             
-            for i = 1:(numel(actual_v)-1)
-               
+            for i = 1:(numel(actual_v))
+                
+                % stop if we are at the last point
+                if (i == numel(actual_v))
+                    break;
+                end
+                
                 if (sign(u - actual_v(i)*valid_c(i)) ~= sign(u - actual_v(i+1)*valid_c(i+1))) 
                     i_value = interp1([valid_c(i)*actual_v(i),valid_c(i+1)*actual_v(i+1)], [valid_c(i), valid_c(i+1)], u);
                     delta_e = 0;
@@ -830,7 +835,7 @@ classdef IPmodel_noiteration < matlab.System & matlab.system.mixin.Propagates
                     if (i_value < 0) 
                         %eff_d_val = interp1(obj.eff_d(2,:), obj.eff_d(1,:), i_value, 'linear', 'extrap');
                         eff_d_val = eff_discharging(obj, u, i_value);
-                        delta_e = (u/eff_d_val)*obj.time_step;
+                        delta_e = (u*eff_d_val)*obj.time_step;
                     elseif (i_value > 0)
                         %eff_c_val = interp1(obj.eff_c(2,:), obj.eff_c(1,:), i_value, 'linear', 'extrap');
                         eff_c_val = eff_charging(obj, u, i_value);
