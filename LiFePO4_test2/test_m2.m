@@ -34,7 +34,7 @@ for i=1:numel(power)
     % if discharging, ensure we discharge fully so that we can test
     % charging from empty battery.
     if (apply_power(i) < 0)
-        apply_power(i) = apply_power(i)*1.05;
+        %apply_power(i) = apply_power(i)*1.05;
     end
     success = 0;
     % try applying power. If exception is raised, adjust power accordingly
