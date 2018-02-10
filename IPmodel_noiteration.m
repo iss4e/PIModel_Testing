@@ -252,9 +252,10 @@ classdef IPmodel_noiteration < matlab.System & matlab.system.mixin.Propagates
             obj.a_2 = zeros(2, num_unique_charging_rates);
             obj.a_1 = zeros(2, num_unique_discharging_rates);
 
-            %figure;
+            figure;
             eff_cs = zeros(num_charging_points, 1);
             eff_cs_avg = zeros(2, num_unique_charging_rates);
+            
             for i=1:num_unique_charging_rates
 
                 start_index = unique_charging_rate_indices(i);
@@ -282,12 +283,18 @@ classdef IPmodel_noiteration < matlab.System & matlab.system.mixin.Propagates
                 
                 end
                 
+                %plot3(charging_voltages(start_index:end_index,1)*obj.nominal_capacity, E_c(start_index:end_index), charging_voltages(start_index:end_index,3), 'Color', [0,114, 189]/255, 'LineWidth', 2);
+                %hold on;
+                
                 eff_cs_avg(1,i) = mean(eff_cs((start_index+1):end_index));
                 eff_cs_avg(2,i) = unique_charging_rates(i)*obj.nominal_capacity;
 %                 plot([0, E_c(start_index:end_index)'], [1.5, charging_voltages(start_index:end_index,3)'], 'LineWidth', 2);
-%                 if (i < num_unique_charging_rates)
-%                     hold on;
-%                 else
+                plot(charging_voltages((start_index+1):end_index,3), eff_cs((start_index+1):end_index), 'LineWidth', 2);
+%                 plot(E_c((start_index+1):end_index), eff_cs((start_index+1):end_index), 'LineWidth', 2);
+               if (i < num_unique_charging_rates)
+                   hold on;
+               end
+                    %                 else
 %                     hold on;
 %                     plot([0,72.5], [1.5, 1.5], '--k')
 %                     hold on;
@@ -303,6 +310,12 @@ classdef IPmodel_noiteration < matlab.System & matlab.system.mixin.Propagates
                 obj.a_2(2,i) = unique_charging_rates(i)*obj.nominal_capacity;
 
             end
+           
+            set(gca,'FontSize', 15)
+            xlabel('Voltage (V)')
+            ylabel('Efficiency')
+            
+            figure;
             
             eff_ds = zeros(num_discharging_points, 1);
             eff_ds_avg = zeros(2, num_unique_discharging_rates);
@@ -331,13 +344,34 @@ classdef IPmodel_noiteration < matlab.System & matlab.system.mixin.Propagates
                 eff_ds_avg(1,i) = mean(eff_ds((start_index+1):end_index));
                 eff_ds_avg(2,i) = -unique_discharging_rates(i)*obj.nominal_capacity;
 
+                plot(discharging_voltages((start_index+1):end_index,3), eff_ds((start_index+1):end_index), 'LineWidth', 2);
+                if (i < num_unique_discharging_rates)
+                    hold on;
+                else
+                    hold on;
+                    resolution1 = 0:(-obj.max_discharging_current/10):(-obj.max_discharging_current);
+                    Vnom_d_m1 = mean(interp1(obj.Vnom_d(2,:), obj.Vnom_d(1,:), resolution1, 'linear', 'extrap'));
+                    plot(ones(1,num_unique_discharging_rates)*Vnom_d_m1, 1-(obj.R_i*(-unique_discharging_rates)*obj.nominal_capacity)/Vnom_d_m1, '*k')
+                    hold on;
+                    resolution2 = 0:(-obj.max_discharging_current/10):(-60);
+                    eff_d_5C = mean(interp1(obj.eff_d(2,:), 2-obj.eff_d(1,:), resolution1, 'linear', 'extrap'));
+                    eff_d_2C = mean(interp1(obj.eff_d(2,:), 2-obj.eff_d(1,:), resolution2, 'linear', 'extrap'));
+                    plot(Vnom_d_m1, eff_d_5C, 'sb')
+                    hold on;
+                    plot(Vnom_d_m1, eff_d_2C, 'sr')
+                    xlabel('Voltage (V)')
+                    ylabel('\eta_d')
+                    set(gca, 'FontSize', 15)
+                    xlim([1.3,2.8])
+                end
+                
             end
 
             % since the battery was being discharged, need to shift
             % energy content so that it represents how much energy is
             % left in the battery. We use the largest difference in energy
             % content to undertand the maximum energy that can be obtained.
-
+            
             max_content = max(E_d);
             for i=1:num_unique_discharging_rates
 
@@ -356,35 +390,38 @@ classdef IPmodel_noiteration < matlab.System & matlab.system.mixin.Propagates
                     E_d(j) = E_d(j) + (max_content - max_rate_content);
                 end
 
+                %plot3(discharging_voltages(start_index:end_index,1)*-obj.nominal_capacity, E_d(start_index:end_index), discharging_voltages(start_index:end_index,3), 'Color', [0,114, 189]/255, 'LineWidth', 2);
+                %plot(E_d((start_index+1):end_index), eff_ds((start_index+1):end_index), 'LineWidth', 2);
+%                 if (i < num_unique_discharging_rates)
+%                     hold on;
+%                 end
+                
                 obj.a_1(1,i) = max_content - max_rate_content;
                 obj.a_1(2,i) = -unique_discharging_rates(i)*obj.nominal_capacity;
 
             end
             
-            figure;
-            scatter3(discharging_voltages(:,1)*obj.nominal_capacity, E_d, eff_ds);
-            set(gca, 'FontSize', 15)
-            xlabel('Current (A)')
-            ylabel('Energy Content (Wh)')
-            zlabel('Efficiency')
+
             
-            figure;
-            scatter(obj.eff_c(2,:), obj.eff_c(1,:), '*')
-            hold on;
-            scatter(eff_cs_avg(2,:), eff_cs_avg(1,:), '+')
-            set(gca, 'FontSize', 15)
-            xlabel('Current (A)')
-            ylabel('Efficiency')
-            legend('\eta_c with Vnom', '\eta_c averaged over SoC range')
-            
-            figure;
-            scatter(obj.eff_d(2,:), obj.eff_d(1,:), '*')
-            hold on;
-            scatter(eff_ds_avg(2,:), eff_ds_avg(1,:), '+')
-            set(gca, 'FontSize', 15)
-            xlabel('Current (A)')
-            ylabel('Efficiency')
-            legend('\eta_d with Vnom', '\eta_d averaged over SoC range')
+
+%             
+%             figure;
+%             scatter(obj.eff_c(2,:), obj.eff_c(1,:), '*')
+%             hold on;
+%             scatter(eff_cs_avg(2,:), eff_cs_avg(1,:), '+')
+%             set(gca, 'FontSize', 15)
+%             xlabel('Current (A)')
+%             ylabel('Efficiency')
+%             legend('\eta_c with Vnom', '\eta_c averaged over SoC range')
+%             
+%             figure;
+%             scatter(obj.eff_d(2,:), obj.eff_d(1,:), '*')
+%             hold on;
+%             scatter(eff_ds_avg(2,:), eff_ds_avg(1,:), '+')
+%             set(gca, 'FontSize', 15)
+%             xlabel('Current (A)')
+%             ylabel('Efficiency')
+%             legend('\eta_d with Vnom', '\eta_d averaged over SoC range')
             % Step 6: set maximum charging and discharging current
             
             obj.alpha_c = obj.max_charging_current;
@@ -447,10 +484,11 @@ classdef IPmodel_noiteration < matlab.System & matlab.system.mixin.Propagates
             
 
             % plot the M function;
-            figure;
-            scatter3(all_currents, all_bks, all_vs);
+            %figure;
+            %plot3(all_currents, all_bks, all_vs);
             
-            hold on;
+            %hold on;
+            figure;
             scatter3(reshape(curr_grid, [1,numel(curr_grid)]), reshape(b_grid, [1,numel(b_grid)]), reshape(v_grid, [1,numel(v_grid)]), '.', 'MarkerEdgeColor', [0.5 .5 .5], 'MarkerFaceColor', [0.5 0.5 0.5]);
             zlim([1.5,4])
             xlabel('Current (A)')
