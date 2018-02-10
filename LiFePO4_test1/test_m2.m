@@ -5,7 +5,7 @@ addpath('/u1/fkazhamiaka/Models/PIModel_Testing');
 model = IPmodel_noiteration;
 
 model.v_charging_filename='v_curve_charging_lifepo4.csv'; % CSV File containing constant-current charging voltage curves
-model.v_discharging_filename='v_curve_discharging_lifepo4.csv'; % CSV File containing constant-current discharging voltage curves
+model.v_discharging_filename='v_curve_discharging_lifepo4_spec.csv'; % CSV File containing constant-current discharging voltage curves
 model.nominal_capacity=1.1; % Nominal capacity (Ampere-hours)
 model.R_i=0.05; % Internal impedance (Ohms)
 model.max_charging_current=4.4; % Maximum charging current (Amperes)
@@ -106,4 +106,4 @@ xlabel('Time')
 ylabel('Current')
 set(gca, 'FontSize', 15)
 
-save('v_PI_noiterate.mat', 'v_modelled');
+save('v_PI_noiterate_spec.mat', 'v_modelled');
