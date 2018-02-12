@@ -881,7 +881,7 @@ classdef IPmodel_noiteration < matlab.System & matlab.system.mixin.Propagates
                     end
 
                     b_value = obj.b_prev + delta_e;
-                    v_value = obj.M_function(i_value,b_value);
+                    v_value = min(obj.V_max, max(obj.V_min,obj.M_function(i_value,b_value)));
                     
                     valid_vvce = [valid_vvce; [v_value, u/i_value, i_value, b_value]];
                     
