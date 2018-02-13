@@ -517,6 +517,10 @@ classdef IPmodel_noiteration < matlab.System & matlab.system.mixin.Propagates
                 obj.throw_exception = true;
             end
             
+            %obj.b_grid = [];
+            %obj.c_grid = [];
+            %obj.v_grid = [];
+            
         end
 
         function y = stepImpl(obj,u)
@@ -741,7 +745,8 @@ classdef IPmodel_noiteration < matlab.System & matlab.system.mixin.Propagates
         end
 
         function resetImpl(obj)
-            % Initialize / reset discrete-state properties
+            obj.b = obj.initial_energy_content;
+            obj.b_prev = obj.initial_energy_content;
         end
 
         function name1 = getInputNamesImpl(obj)

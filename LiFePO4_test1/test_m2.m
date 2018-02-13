@@ -10,12 +10,15 @@ model.nominal_capacity=1.1; % Nominal capacity (Ampere-hours)
 model.R_i=0.05; % Internal impedance (Ohms)
 model.max_charging_current=4.4; % Maximum charging current (Amperes)
 model.max_discharging_current=11; % Maximum discharging current (Amperes)
-model.initial_energy_content=3; % Initial energy content (Wh)
+model.initial_energy_content=3.5618;%3; % Initial energy content (Wh)
 model.time_step = 1/360; % simulation time-step duration (hours)
 
 load('test_current_input.mat') % current
 
 load('voltage_measured.mat') % voltage
+
+load('b_PI_noiterate.mat') % energy content to reset for each cycle
+b_modelled_base = b_modelled;
 
 power = current.*voltage;
 apply_power = zeros(1,numel(power));
@@ -24,8 +27,9 @@ v_modelled = zeros(1,numel(power));
 i_modelled = zeros(1,numel(power));
 b_modelled = zeros(1,numel(power));
 
+starts = [423 1516 2278 2869 3403 3907 4395] + 3280;
 
-for i=1:numel(power)
+for i=starts(1):numel(power)
     
     VIB = zeros(1,3);
     apply_power(i) = power(i);
@@ -33,8 +37,14 @@ for i=1:numel(power)
     success = 0;
     % try applying power. If exception is raised, adjust power accordingly
     % to prevent violating constraints of the battery model.
-    if (i==17466)
-        i = i;
+    if (ismember(i,starts))
+        i = i
+        model.release();
+        model.initial_energy_content=b_modelled_base(i);
+        model.reset();
+    end
+    if (apply_power > 0)
+        continue;
     end
     while(~success)
         try
@@ -106,4 +116,4 @@ xlabel('Time')
 ylabel('Current')
 set(gca, 'FontSize', 15)
 
-save('v_PI_noiterate_spec.mat', 'v_modelled');
+save('v_PI_noiterate_spec_allC.mat', 'v_modelled');
