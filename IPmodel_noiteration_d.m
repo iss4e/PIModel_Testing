@@ -1,4 +1,4 @@
-classdef IPmodel_noiteration < matlab.System & matlab.system.mixin.Propagates
+classdef IPmodel_noiteration_d < matlab.System & matlab.system.mixin.Propagates
     % Integrated Power-based battery model: Matlab System block implementation. Note that voltage curves should be specified in three columns representing the following: C-rate, Ampere-hour content (Ah in Ah), Battery/Cell Voltage (in Volts). Rows corresponding to the same C-rate should appear in contiguous chronological order.
 
     % Public, tunable properties
